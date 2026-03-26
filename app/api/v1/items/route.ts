@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
     board_id?: unknown
     title?: unknown
     price?: unknown
+    thumbnail_url?: unknown
   }
   try {
     body = await request.json()
@@ -86,20 +87,23 @@ export async function POST(request: NextRequest) {
     return apiError(422, 'INVALID_BODY', '"board_id" must be a number')
   }
 
-  // title 또는 price 미입력 시 자동 스크래핑
+  // 클라이언트(예: 크롬 확장)가 직접 제공한 값 우선 사용, 없으면 스크래핑
   let title = typeof body.title === 'string' ? body.title.trim() || null : null
   let price = typeof body.price === 'number' ? body.price : null
-  let imageUrl: string | null = null
+  const thumbnailUrl = typeof body.thumbnail_url === 'string' ? body.thumbnail_url.trim() || null : null
+  let imageUrl: string | null = thumbnailUrl
   let currency = 'KRW'
   let priceRaw: string | null = null
 
-  if (!title || price === null) {
+  if (!title || price === null || !imageUrl) {
     const meta = await fetchMetadata(url, request.nextUrl.origin)
     if (!title) title = meta.title ?? url
-    if (price === null) price = meta.price ?? null
-    imageUrl = meta.image ?? null
-    currency = meta.currency ?? 'KRW'
-    priceRaw = meta.priceRaw ?? null
+    if (price === null) {
+      price = meta.price ?? null
+      currency = meta.currency ?? 'KRW'
+      priceRaw = meta.priceRaw ?? null
+    }
+    if (!imageUrl) imageUrl = meta.image ?? null
   }
 
   const { data, error } = await auth.supabase
