@@ -40,7 +40,7 @@ export default function BoardSelector({
   }
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex items-center gap-2 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       <button
         onClick={() => onSelectBoard(null)}
         className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${

@@ -10,7 +10,8 @@ import ItemThumbnail from '@/components/ItemThumbnail'
 import PinCard from '@/components/PinCard'
 import MasonryGrid from '@/components/MasonryGrid'
 import EditModal from '@/components/EditModal'
-import LoginScreen from '@/components/LoginScreen'
+import LandingPage from '@/components/LandingPage'
+import SkeletonCard from '@/components/SkeletonCard'
 
 interface BookmarkCard {
   id: number
@@ -115,6 +116,7 @@ export default function Home() {
   const [editingCard, setEditingCard] = useState<BookmarkCard | null>(null)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [cardsLoading, setCardsLoading] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -168,6 +170,7 @@ export default function Home() {
 
     const fetchItems = async () => {
       console.log('[fetchItems] selectedBoardId:', selectedBoardId)
+      setCardsLoading(true)
 
       let query = supabase
         .from('items')
@@ -187,9 +190,11 @@ export default function Home() {
       if (error) {
         console.error('Failed to load items:', error.message)
         setCards([])
+        setCardsLoading(false)
         return
       }
       setCards(data ?? [])
+      setCardsLoading(false)
     }
 
     fetchItems()
@@ -334,7 +339,7 @@ export default function Home() {
     )
   }
 
-  if (!user) return <LoginScreen />
+  if (!user) return <LandingPage />
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -417,7 +422,13 @@ export default function Home() {
       )}
 
       <div className="max-w-5xl mx-auto px-4 py-8">
-        {cards.length === 0 ? (
+        {cardsLoading ? (
+          <MasonryGrid>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </MasonryGrid>
+        ) : cards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center">
             <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-slate-400">
