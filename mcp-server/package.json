@@ -1,0 +1,18 @@
+{
+  "name": "shopaitry-mcp-server",
+  "version": "1.0.0",
+  "description": "Shopaitry MCP Server - AI 에이전트가 쇼핑 위시보드를 조작",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "latest"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}
