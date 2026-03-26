@@ -3,13 +3,29 @@
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import StatusBadge from '@/components/StatusBadge'
+import BoardSelector from '@/components/BoardSelector'
+import ItemThumbnail from '@/components/ItemThumbnail'
+import PinCard from '@/components/PinCard'
+import MasonryGrid from '@/components/MasonryGrid'
+import EditModal from '@/components/EditModal'
 
 interface BookmarkCard {
-  id: string
+  id: number
   url: string
   title: string
   image_url: string | null
+  status: string
+  board_id: number | null
+  price: number | null
+  currency: string
+  price_raw: string | null
   created_at?: string
+}
+
+interface Board {
+  id: number
+  name: string
 }
 
 function getHostname(url: string): string {
@@ -18,25 +34,6 @@ function getHostname(url: string): string {
   } catch {
     return url
   }
-}
-
-function FaviconFallback({ hostname }: { hostname: string }) {
-  return (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-      <div className="flex flex-col items-center gap-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=64`}
-          alt=""
-          className="w-10 h-10 opacity-60"
-          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-        />
-        <span className="text-xs text-slate-400 font-medium truncate max-w-[120px]">
-          {hostname}
-        </span>
-      </div>
-    </div>
-  )
 }
 
 function LoginScreen() {
@@ -122,28 +119,22 @@ function LoginScreen() {
 function BookmarkCardItem({
   card,
   onDelete,
+  onStatusChange,
 }: {
   card: BookmarkCard
-  onDelete: (id: string) => void
+  onDelete: (id: number) => void
+  onStatusChange: (id: number, newStatus: string) => void
 }) {
-  const [imgError, setImgError] = useState(false)
-
   return (
     <div className="break-inside-avoid mb-4 group">
       <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-md transition-shadow duration-200">
         <a href={card.url} target="_blank" rel="noopener noreferrer" className="block">
           <div className="relative w-full aspect-video bg-slate-50 overflow-hidden">
-            {card.image_url && !imgError ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={card.image_url}
-                alt={card.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                onError={() => setImgError(true)}
-              />
-            ) : (
-              <FaviconFallback hostname={getHostname(card.url)} />
-            )}
+            <ItemThumbnail
+              imageUrl={card.image_url}
+              hostname={getHostname(card.url)}
+              title={card.title}
+            />
           </div>
         </a>
 
@@ -168,10 +159,17 @@ function BookmarkCardItem({
               >
                 {card.title}
               </a>
+              <div className="mt-2">
+                <StatusBadge
+                  itemId={card.id}
+                  status={card.status}
+                  onStatusChange={(newStatus) => onStatusChange(card.id, newStatus)}
+                />
+              </div>
             </div>
             <button
               onClick={() => onDelete(card.id)}
-              className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+              className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 sm:opacity-0 max-sm:opacity-100"
               aria-label="삭제"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -189,6 +187,9 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [cards, setCards] = useState<BookmarkCard[]>([])
+  const [boards, setBoards] = useState<Board[]>([])
+  const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null)
+  const [editingCard, setEditingCard] = useState<BookmarkCard | null>(null)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -208,7 +209,34 @@ export default function Home() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // 로그인된 유저의 아이템 로드
+  // 보드 로드
+  useEffect(() => {
+    if (!user) {
+      setBoards([])
+      return
+    }
+
+    const fetchBoards = async () => {
+      const { data, error } = await supabase
+        .from('boards')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        console.error('Failed to load boards:', error.message)
+        return
+      }
+      if (data?.[0]) {
+        console.log('[fetchBoards] first board id:', data[0].id, '| typeof:', typeof data[0].id)
+      }
+      setBoards(data ?? [])
+    }
+
+    fetchBoards()
+  }, [user])
+
+  // 아이템 로드 (보드 필터 포함)
   useEffect(() => {
     if (!user) {
       setCards([])
@@ -216,21 +244,33 @@ export default function Home() {
     }
 
     const fetchItems = async () => {
-      const { data, error } = await supabase
+      console.log('[fetchItems] selectedBoardId:', selectedBoardId)
+
+      let query = supabase
         .from('items')
-        .select('id, url, title, image_url, created_at')
+        .select('id, url, title, image_url, status, board_id, price, currency, price_raw, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
+      if (typeof selectedBoardId === 'number') {
+        console.log('[fetchItems] applying board filter:', selectedBoardId)
+        query = query.eq('board_id', selectedBoardId)
+      }
+
+      const { data, error } = await query
+
+      console.log('[fetchItems] result count:', data?.length ?? 0, error ? `error: ${error.message}` : '')
+
       if (error) {
         console.error('Failed to load items:', error.message)
+        setCards([])
         return
       }
       setCards(data ?? [])
     }
 
     fetchItems()
-  }, [user])
+  }, [user, selectedBoardId])
 
   const handleSave = async () => {
     if (!user) return
@@ -249,6 +289,11 @@ export default function Home() {
         url: data.url || trimmed,
         title: data.title || trimmed,
         image_url: data.image || null,
+        board_id: selectedBoardId,
+        status: 'wish',
+        price: data.price ?? null,
+        currency: data.currency ?? 'KRW',
+        price_raw: data.priceRaw ?? null,
       }
 
       const { data: inserted, error: insertError } = await supabase
@@ -258,6 +303,16 @@ export default function Home() {
         .single()
 
       if (insertError) throw new Error(insertError.message)
+
+      // price_history 첫 기록 삽입
+      if (inserted.price !== null && inserted.price !== undefined) {
+        await supabase.from('price_history').insert({
+          item_id: inserted.id,
+          price: inserted.price,
+          currency: inserted.currency ?? 'KRW',
+        })
+        // price_history 실패는 아이템 저장에 영향 안 줌
+      }
 
       setCards((prev) => [inserted, ...prev])
       setInput('')
@@ -274,7 +329,12 @@ export default function Home() {
     if (e.key === 'Enter') handleSave()
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
+    if (!confirm('이 아이템을 삭제할까요?')) return
+
+    const deletedCard = cards.find((c) => c.id === id)
+    setCards((prev) => prev.filter((c) => c.id !== id)) // 낙관적 업데이트
+
     const { error: deleteError } = await supabase
       .from('items')
       .delete()
@@ -282,9 +342,61 @@ export default function Home() {
 
     if (deleteError) {
       console.error('Failed to delete item:', deleteError.message)
+      if (deletedCard) {
+        setCards((prev) =>
+          [deletedCard, ...prev].sort(
+            (a, b) =>
+              new Date(b.created_at ?? '').getTime() -
+              new Date(a.created_at ?? '').getTime()
+          )
+        )
+      }
+    }
+  }
+
+  const handleStatusChange = (id: number, newStatus: string) => {
+    setCards((prev) => prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c)))
+  }
+
+  const handleEdit = (id: number) => {
+    const card = cards.find((c) => c.id === id)
+    if (card) setEditingCard(card)
+  }
+
+  const handleEditSave = async (
+    id: number,
+    updates: { title: string; price: number | null; image_url: string | null }
+  ) => {
+    const { error: updateError } = await supabase
+      .from('items')
+      .update(updates)
+      .eq('id', id)
+
+    if (updateError) {
+      console.error('Failed to update item:', updateError.message)
       return
     }
-    setCards((prev) => prev.filter((c) => c.id !== id))
+
+    setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)))
+    setEditingCard(null)
+  }
+
+  const handleCreateBoard = async (name: string) => {
+    if (!user) return
+
+    const { data, error } = await supabase
+      .from('boards')
+      .insert({ name, user_id: user.id })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Failed to create board:', error.message)
+      return
+    }
+
+    setBoards((prev) => [...prev, data])
+    setSelectedBoardId(data.id)
   }
 
   const handleLogout = async () => {
@@ -305,11 +417,11 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-100 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <h1 className="text-lg font-bold text-slate-800 tracking-tight">🔖 Shopaitry</h1>
             <div className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               {user.user_metadata?.avatar_url && (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={user.user_metadata.avatar_url}
                   alt=""
@@ -328,7 +440,14 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <BoardSelector
+            boards={boards}
+            selectedBoardId={selectedBoardId}
+            onSelectBoard={setSelectedBoardId}
+            onCreateBoard={handleCreateBoard}
+          />
+
+          <div className="flex gap-2 mt-3">
             <input
               ref={inputRef}
               type="url"
@@ -360,6 +479,14 @@ export default function Home() {
         </div>
       </header>
 
+      {editingCard && (
+        <EditModal
+          card={editingCard}
+          onSave={handleEditSave}
+          onClose={() => setEditingCard(null)}
+        />
+      )}
+
       <div className="max-w-5xl mx-auto px-4 py-8">
         {cards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center">
@@ -374,12 +501,18 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <p className="text-xs text-slate-400 mb-6">{cards.length}개의 링크</p>
-            <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
+            <p className="text-xs text-slate-400 mb-4">{cards.length}개의 링크</p>
+            <MasonryGrid>
               {cards.map((card) => (
-                <BookmarkCardItem key={card.id} card={card} onDelete={handleDelete} />
+                <PinCard
+                  key={card.id}
+                  card={card}
+                  onDelete={handleDelete}
+                  onStatusChange={handleStatusChange}
+                  onEdit={handleEdit}
+                />
               ))}
-            </div>
+            </MasonryGrid>
           </>
         )}
       </div>
