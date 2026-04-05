@@ -258,8 +258,6 @@ export default function Home() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('이 아이템을 삭제할까요?')) return
-
     const deletedCard = cards.find((c) => c.id === id)
     setCards((prev) => prev.filter((c) => c.id !== id)) // 낙관적 업데이트
 
@@ -327,6 +325,21 @@ export default function Home() {
     setSelectedBoardId(data.id)
   }
 
+  const handleDeleteBoard = async (boardId: number) => {
+    const { error } = await supabase
+      .from('boards')
+      .delete()
+      .eq('id', boardId)
+
+    if (error) {
+      console.error('Failed to delete board:', error.message)
+      return
+    }
+
+    setBoards((prev) => prev.filter((b) => b.id !== boardId))
+    if (selectedBoardId === boardId) setSelectedBoardId(null)
+  }
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
   }
@@ -379,6 +392,7 @@ export default function Home() {
             selectedBoardId={selectedBoardId}
             onSelectBoard={setSelectedBoardId}
             onCreateBoard={handleCreateBoard}
+            onDeleteBoard={handleDeleteBoard}
           />
 
           <div className="flex gap-2 mt-3">

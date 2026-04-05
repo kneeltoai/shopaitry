@@ -12,6 +12,7 @@ interface BoardSelectorProps {
   selectedBoardId: number | null
   onSelectBoard: (boardId: number | null) => void
   onCreateBoard: (name: string) => void
+  onDeleteBoard: (boardId: number) => void
 }
 
 export default function BoardSelector({
@@ -19,6 +20,7 @@ export default function BoardSelector({
   selectedBoardId,
   onSelectBoard,
   onCreateBoard,
+  onDeleteBoard,
 }: BoardSelectorProps) {
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
@@ -53,17 +55,34 @@ export default function BoardSelector({
       </button>
 
       {boards.map((board) => (
-        <button
-          key={board.id}
-          onClick={() => onSelectBoard(board.id)}
-          className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-            selectedBoardId === board.id
-              ? 'bg-slate-800 text-white'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
-        >
-          {board.name}
-        </button>
+        <div key={board.id} className="relative group/board flex-shrink-0">
+          <button
+            onClick={() => onSelectBoard(board.id)}
+            className={`px-3 py-1 pr-6 rounded-lg text-xs font-medium transition-colors ${
+              selectedBoardId === board.id
+                ? 'bg-slate-800 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            {board.name}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteBoard(board.id)
+            }}
+            className={`absolute right-1 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center opacity-0 group-hover/board:opacity-100 transition-opacity ${
+              selectedBoardId === board.id
+                ? 'text-slate-300 hover:text-white hover:bg-slate-600'
+                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-300'
+            }`}
+            aria-label="보드 삭제"
+          >
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+              <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
       ))}
 
       {creating ? (
