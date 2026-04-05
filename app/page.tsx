@@ -10,7 +10,7 @@ import ItemThumbnail from '@/components/ItemThumbnail'
 import PinCard from '@/components/PinCard'
 import MasonryGrid from '@/components/MasonryGrid'
 import EditModal from '@/components/EditModal'
-import LandingPage from '@/components/LandingPage'
+import LandingPageStyled from '@/components/LandingPageStyled'
 import SkeletonCard from '@/components/SkeletonCard'
 
 interface BookmarkCard {
@@ -339,7 +339,7 @@ export default function Home() {
     )
   }
 
-  if (!user) return <LandingPage />
+  if (!user) return <LandingPageStyled />
 
   return (
     <main className="min-h-screen bg-slate-50">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import StatusBadge from '@/components/StatusBadge'
 
 interface PinCardData {
@@ -88,13 +88,6 @@ function FallbackCard({
 }
 
 export default function PinCard({ card, onDelete, onStatusChange, onEdit }: PinCardProps) {
-  const [useFallback, setUseFallback] = useState(!card.image_url)
-
-  // image_url이 외부에서 변경되면(편집 저장 후) fallback 상태 리셋
-  useEffect(() => {
-    setUseFallback(!card.image_url)
-  }, [card.image_url])
-
   const hostname = getHostname(card.url)
   const openUrl = () => window.open(card.url, '_blank', 'noopener,noreferrer')
 
@@ -102,29 +95,13 @@ export default function PinCard({ card, onDelete, onStatusChange, onEdit }: PinC
     <div className="break-inside-avoid mb-2 group">
       <div className="bg-white rounded-xl overflow-hidden">
         <div className="relative overflow-hidden">
-          {!useFallback ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={card.image_url!}
-                alt={card.title}
-                className="w-full block cursor-pointer"
-                onClick={openUrl}
-                onError={() => setUseFallback(true)}
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-200 flex items-center justify-center pointer-events-none">
-                <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/50 px-3 py-1.5 rounded-full">
-                  사이트 방문
-                </span>
-              </div>
-            </>
-          ) : (
-            <FallbackCard
-              hostname={hostname}
-              title={card.title}
-              onClick={openUrl}
-            />
-          )}
+          <ImageOrFallback
+            key={card.image_url ?? 'no-image'}
+            imageUrl={card.image_url}
+            hostname={hostname}
+            title={card.title}
+            openUrl={openUrl}
+          />
 
           {/* 상태 뱃지 — 좌측 상단 */}
           <div
@@ -183,4 +160,40 @@ export default function PinCard({ card, onDelete, onStatusChange, onEdit }: PinC
       </div>
     </div>
   )
+}
+
+function ImageOrFallback({
+  imageUrl,
+  hostname,
+  title,
+  openUrl,
+}: {
+  imageUrl: string | null
+  hostname: string
+  title: string
+  openUrl: () => void
+}) {
+  const [useFallback, setUseFallback] = useState(!imageUrl)
+
+  if (!useFallback && imageUrl) {
+    return (
+      <>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt={title}
+          className="w-full block cursor-pointer"
+          onClick={openUrl}
+          onError={() => setUseFallback(true)}
+        />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-200 flex items-center justify-center pointer-events-none">
+          <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/50 px-3 py-1.5 rounded-full">
+            사이트 방문
+          </span>
+        </div>
+      </>
+    )
+  }
+
+  return <FallbackCard hostname={hostname} title={title} onClick={openUrl} />
 }
