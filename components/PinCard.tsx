@@ -29,23 +29,10 @@ function getHostname(url: string): string {
   }
 }
 
-const GRADIENTS = [
-  'from-blue-500 to-indigo-600',
-  'from-violet-500 to-purple-600',
-  'from-emerald-500 to-teal-600',
-  'from-amber-500 to-orange-600',
-  'from-rose-500 to-pink-600',
-  'from-cyan-500 to-blue-600',
-  'from-fuchsia-500 to-violet-600',
-  'from-lime-500 to-emerald-600',
-]
+const DARK_COLORS = ['#dde3f5', '#d5e8dd', '#f5dde3', '#e8d5f5', '#ddf0f5']
 
-function pickGradient(hostname: string): string {
-  let hash = 0
-  for (let i = 0; i < hostname.length; i++) {
-    hash = hostname.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return GRADIENTS[Math.abs(hash) % GRADIENTS.length]
+function pickColor(): string {
+  return DARK_COLORS[Math.floor(Math.random() * DARK_COLORS.length)]
 }
 
 const SCRAPE_FAILURE_PATTERNS = ['access denied', 'robot check', '403', 'forbidden', 'just a moment', 'attention required']
@@ -64,12 +51,10 @@ function FallbackCard({
   title: string
   onClick: () => void
 }) {
-  const gradient = pickGradient(hostname)
-  const displayTitle = isScrapingFailure(title) ? title : title
-
   return (
     <div
-      className={`w-full min-h-[200px] flex flex-col items-center justify-center bg-gradient-to-br ${gradient} px-4 py-6 gap-2 cursor-pointer`}
+      className="w-full min-h-[200px] flex flex-col items-center justify-center px-4 py-6 gap-2 cursor-pointer brightness-100 group-hover:brightness-75 transition-all duration-200"
+      style={{ backgroundColor: pickColor() }}
       onClick={onClick}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -79,9 +64,9 @@ function FallbackCard({
         className="w-12 h-12"
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
       />
-      <span className="text-xs text-white/70">{hostname}</span>
-      <p className="text-base font-bold text-center line-clamp-3 leading-snug text-white">
-        {displayTitle}
+      <span className="text-xs" style={{ color: '#666' }}>{hostname}</span>
+      <p className="text-base font-bold text-center line-clamp-3 leading-snug" style={{ color: '#333' }}>
+        {title}
       </p>
     </div>
   )
@@ -103,19 +88,6 @@ export default function PinCard({ card, onDelete, onStatusChange, onEdit }: PinC
             openUrl={openUrl}
           />
 
-          {/* 상태 뱃지 — 좌측 상단 */}
-          <div
-            className="absolute top-2 left-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="backdrop-blur-sm">
-              <StatusBadge
-                itemId={card.id}
-                status={card.status}
-                onStatusChange={(newStatus) => onStatusChange(card.id, newStatus)}
-              />
-            </div>
-          </div>
 
           {/* 편집 버튼 — 삭제 버튼 왼쪽, hover 시 표시 */}
           <button
@@ -182,15 +154,10 @@ function ImageOrFallback({
         <img
           src={imageUrl}
           alt={title}
-          className="w-full block cursor-pointer"
+          className="w-full block cursor-pointer brightness-100 group-hover:brightness-75 transition-all duration-200"
           onClick={openUrl}
           onError={() => setUseFallback(true)}
         />
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-200 flex items-center justify-center pointer-events-none">
-          <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/50 px-3 py-1.5 rounded-full">
-            사이트 방문
-          </span>
-        </div>
       </>
     )
   }

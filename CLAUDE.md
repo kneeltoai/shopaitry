@@ -1,3 +1,12 @@
+# Claude Behavior Rules
+
+- Be concise. No explanations unless asked.
+- No pleasantries or filler text.
+- Code only, minimal comments.
+- Don't summarize what you just did.
+
+---
+
 # Shopaitry — Claude Code 프로젝트 가이드
 
 > **이 파일은 Claude Code가 세션 시작 시 자동으로 읽는 프로젝트 컨텍스트 파일입니다.**
