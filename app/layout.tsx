@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 const landingSans = Noto_Sans_KR({
   variable: "--landing-font-body",
-  subsets: ["korean"],
+  subsets: ["latin"],
   weight: ["400", "500", "700", "900"],
 });
 
